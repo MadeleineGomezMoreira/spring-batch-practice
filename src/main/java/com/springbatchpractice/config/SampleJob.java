@@ -14,12 +14,14 @@ import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
 @AllArgsConstructor
 public class SampleJob {
 
     private JobRepository jobRepository;
+    private PlatformTransactionManager transactionManager;
     private SecondTasklet secondTasklet;
 
     @Bean
@@ -33,14 +35,14 @@ public class SampleJob {
     @Bean
     public Step firstStep(){
         return new StepBuilder("firstStep", jobRepository)
-                .tasklet(firstTask())
+                .tasklet(firstTask(), transactionManager)
                 .build();
     }
 
     @Bean
     public Step secondStep(){
         return new StepBuilder("secondStep", jobRepository)
-                .tasklet(secondTasklet)
+                .tasklet(secondTasklet, transactionManager)
                 .build();
     }
 

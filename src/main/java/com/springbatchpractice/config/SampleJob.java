@@ -1,10 +1,12 @@
 package com.springbatchpractice.config;
 
+import com.springbatchpractice.listener.FirstJobListener;
 import com.springbatchpractice.service.SecondTasklet;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.job.parameters.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.Step;
@@ -23,12 +25,15 @@ public class SampleJob {
     private JobRepository jobRepository;
     private PlatformTransactionManager transactionManager;
     private SecondTasklet secondTasklet;
+    private FirstJobListener firstJobListener;
 
     @Bean
     public Job firstJob() {
         return new JobBuilder("firstJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
                 .start(firstStep())
                 .next(secondStep())
+                .listener(firstJobListener)
                 .build();
     }
 

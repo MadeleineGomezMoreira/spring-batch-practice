@@ -6,7 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
-@EnableBatchProcessing
+//Comment the annotation below (it causes the changes not to be saved in the db) - overrides default config
+//@EnableBatchProcessing
 @ComponentScan({"com.springbatchpractice.config", "com.springbatchpractice.service", "com.springbatchpractice.listener"})
 public class AppApplication {
 

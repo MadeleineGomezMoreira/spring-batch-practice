@@ -1,6 +1,7 @@
 package com.springbatchpractice.config;
 
 import com.springbatchpractice.listener.FirstJobListener;
+import com.springbatchpractice.listener.FirstStepListener;
 import com.springbatchpractice.service.SecondTasklet;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.Nullable;
@@ -26,6 +27,7 @@ public class SampleJob {
     private PlatformTransactionManager transactionManager;
     private SecondTasklet secondTasklet;
     private FirstJobListener firstJobListener;
+    private FirstStepListener firstStepListener;
 
     @Bean
     public Job firstJob() {
@@ -41,6 +43,7 @@ public class SampleJob {
     public Step firstStep(){
         return new StepBuilder("firstStep", jobRepository)
                 .tasklet(firstTask(), transactionManager)
+                .listener(firstStepListener)
                 .build();
     }
 
@@ -56,6 +59,7 @@ public class SampleJob {
             @Override
             public @Nullable RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
                 System.out.println("This is the first tasklet step");
+                System.out.println("SEC " + chunkContext.getStepContext());
                 return RepeatStatus.FINISHED;
             }
         };

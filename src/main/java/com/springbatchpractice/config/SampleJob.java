@@ -2,7 +2,10 @@ package com.springbatchpractice.config;
 
 import com.springbatchpractice.listener.FirstJobListener;
 import com.springbatchpractice.listener.FirstStepListener;
+import com.springbatchpractice.processor.FirstItemProcessor;
+import com.springbatchpractice.reader.FirstItemReader;
 import com.springbatchpractice.service.SecondTasklet;
+import com.springbatchpractice.writer.FirstItemWriter;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.batch.core.job.Job;
@@ -28,8 +31,12 @@ public class SampleJob {
     private SecondTasklet secondTasklet;
     private FirstJobListener firstJobListener;
     private FirstStepListener firstStepListener;
+    private FirstItemReader firstItemReader;
+    private FirstItemProcessor firstItemProcessor;
+    private FirstItemWriter firstItemWriter;
 
-    @Bean
+    //By commenting the @Bean annotation, the job does not run
+    //@Bean
     public Job firstJob() {
         return new JobBuilder("firstJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
@@ -75,4 +82,25 @@ public class SampleJob {
 //        };
 //    }
 
+    @Bean
+    public Job secondJob() {
+        return new JobBuilder("secondJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(firstChunkStep())
+                .next(secondStep())
+                .build();
+    }
+
+    private Step firstChunkStep(){
+        return new StepBuilder("First Chunk Step", jobRepository)
+                .<Integer,Long>chunk(3)
+                //ItemReader MUST always be provided in Chunk oriented steps
+                .reader(firstItemReader)
+                //the processor is necessary when the reader output and the writer input do not match
+                //otherwise it is optional
+                .processor(firstItemProcessor)
+                //ItemWriter MUST always be provided in Chunk oriented steps
+                .writer(firstItemWriter)
+                .build();
+    }
 }

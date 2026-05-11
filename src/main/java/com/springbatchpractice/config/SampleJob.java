@@ -36,10 +36,12 @@ public class SampleJob {
     private FirstItemWriter firstItemWriter;
 
     //By commenting the @Bean annotation, the job does not run
-    //@Bean
+    @Bean
     public Job firstJob() {
         return new JobBuilder("firstJob", jobRepository)
-                .incrementer(new RunIdIncrementer())
+                //Comment this part so that when calling the GET method from the controller,
+                //the params set there are not overridden
+//                .incrementer(new RunIdIncrementer())
                 .start(firstStep())
                 .next(secondStep())
                 .listener(firstJobListener)
@@ -85,7 +87,9 @@ public class SampleJob {
     @Bean
     public Job secondJob() {
         return new JobBuilder("secondJob", jobRepository)
-                .incrementer(new RunIdIncrementer())
+                //Comment this part so that when calling the GET method from the controller,
+                //the params set there are not overridden
+//                .incrementer(new RunIdIncrementer())
                 .start(firstChunkStep())
                 .next(secondStep())
                 .build();

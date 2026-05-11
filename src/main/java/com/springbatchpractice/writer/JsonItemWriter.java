@@ -1,6 +1,5 @@
 package com.springbatchpractice.writer;
 
-import com.springbatchpractice.model.StudentCsv;
 import com.springbatchpractice.model.StudentJson;
 import org.springframework.batch.infrastructure.item.Chunk;
 import org.springframework.batch.infrastructure.item.ItemWriter;

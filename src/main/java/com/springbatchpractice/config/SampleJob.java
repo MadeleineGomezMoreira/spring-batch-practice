@@ -176,17 +176,17 @@ public class SampleJob {
 
     private Step firstChunkStep() {
         return new StepBuilder("First Chunk Step", jobRepository)
-                .<StudentJson, StudentJson>chunk(3)
+                .<StudentJdbc, StudentJdbc>chunk(3)
                 //ItemReader MUST always be provided in Chunk oriented steps
                 //.reader(flatFileItemReader())
                 //.reader(xmlItemReader())
-                //.reader(jdbcItemReader())
-                .reader(itemReaderAdapter())
+                .reader(jdbcItemReader())
+                //.reader(itemReaderAdapter())
                 //the processor is necessary when the reader output and the writer input do not match
                 //otherwise it is optional
                 //.processor(firstItemProcessor)
                 //ItemWriter MUST always be provided in Chunk oriented steps
-                .writer(jsonItemWriter)
+                .writer(jdbcItemWriter)
                 //.writer(firstItemWriter)
                 .build();
     }

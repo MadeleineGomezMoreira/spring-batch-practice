@@ -9,6 +9,7 @@ import com.springbatchpractice.model.StudentXml;
 import com.springbatchpractice.processor.FirstItemProcessor;
 import com.springbatchpractice.reader.FirstItemReader;
 import com.springbatchpractice.service.SecondTasklet;
+import com.springbatchpractice.service.StudentService;
 import com.springbatchpractice.writer.FirstItemWriter;
 import com.springbatchpractice.writer.JdbcItemWriter;
 import com.springbatchpractice.writer.JsonItemWriter;
@@ -25,6 +26,7 @@ import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.infrastructure.item.adapter.ItemReaderAdapter;
 import org.springframework.batch.infrastructure.item.database.JdbcCursorItemReader;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.file.FlatFileItemReader;
@@ -100,6 +102,9 @@ public class SampleJob {
     @Qualifier(value = "datasource")
     private DataSource dataSource;
 
+    @Autowired
+    private StudentService studentService;
+
 
     //By commenting the @Bean annotation, the job does not run
     @Bean
@@ -171,16 +176,17 @@ public class SampleJob {
 
     private Step firstChunkStep() {
         return new StepBuilder("First Chunk Step", jobRepository)
-                .<StudentJdbc, StudentJdbc>chunk(3)
+                .<StudentJson, StudentJson>chunk(3)
                 //ItemReader MUST always be provided in Chunk oriented steps
                 //.reader(flatFileItemReader())
                 //.reader(xmlItemReader())
-                .reader(jdbcItemReader())
+                //.reader(jdbcItemReader())
+                .reader(itemReaderAdapter())
                 //the processor is necessary when the reader output and the writer input do not match
                 //otherwise it is optional
                 //.processor(firstItemProcessor)
                 //ItemWriter MUST always be provided in Chunk oriented steps
-                .writer(jdbcItemWriter)
+                .writer(jsonItemWriter)
                 //.writer(firstItemWriter)
                 .build();
     }
@@ -241,6 +247,14 @@ public class SampleJob {
                         """)
                 .rowMapper(new BeanPropertyRowMapper<>(StudentJdbc.class))
                 .build();
+    }
+
+    public ItemReaderAdapter<StudentJson> itemReaderAdapter(){
+        ItemReaderAdapter<StudentJson> itemReaderAdapter = new ItemReaderAdapter<>();
+        itemReaderAdapter.setTargetObject(studentService);
+        itemReaderAdapter.setTargetMethod("getStudent");
+        itemReaderAdapter.setArguments(new Object[] {1L, "Test"});
+        return itemReaderAdapter;
     }
 
 }

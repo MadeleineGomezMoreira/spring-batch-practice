@@ -1,0 +1,12 @@
+[
+ {"email":"johnsmith@gmail.com","firstName":"John","id":1,"lastName":"Smith"},
+ {"email":"dwilliams@gmail.com","firstName":"Dave","id":2,"lastName":"Williams"},
+ {"email":"mdawson@gmail.com","firstName":"Martha","id":3,"lastName":"Dawson"},
+ {"email":"slett@gmail.com","firstName":"Saul","id":4,"lastName":"Lett"},
+ {"email":"bshepherd@gmail.com","firstName":"Briar","id":5,"lastName":"Shepherd"},
+ {"email":"eglenn@gmail.com","firstName":"Elaine","id":6,"lastName":"Glenn"},
+ {"email":"sfraser@gmail.com","firstName":"Susan","id":7,"lastName":"Fraser"},
+ {"email":"nrogers@gmail.com","firstName":"Nicole","id":8,"lastName":"Rogers"},
+ {"email":"burie@gmail.com","firstName":"Brendan","id":9,"lastName":"Urie"},
+ {"email":"hstyles@gmail.com","firstName":"Harry","id":10,"lastName":"Styles"}
+]

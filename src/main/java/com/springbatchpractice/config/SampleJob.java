@@ -7,6 +7,7 @@ import com.springbatchpractice.model.StudentJdbc;
 import com.springbatchpractice.model.StudentJson;
 import com.springbatchpractice.model.StudentXml;
 import com.springbatchpractice.processor.FirstItemProcessor;
+import com.springbatchpractice.processor.StudentProcessor;
 import com.springbatchpractice.reader.FirstItemReader;
 import com.springbatchpractice.service.SecondTasklet;
 import com.springbatchpractice.service.StudentService;
@@ -29,21 +30,31 @@ import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.item.adapter.ItemReaderAdapter;
 import org.springframework.batch.infrastructure.item.database.JdbcCursorItemReader;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcCursorItemReaderBuilder;
+import org.springframework.batch.infrastructure.item.file.FlatFileFooterCallback;
+import org.springframework.batch.infrastructure.item.file.FlatFileHeaderCallback;
 import org.springframework.batch.infrastructure.item.file.FlatFileItemReader;
+import org.springframework.batch.infrastructure.item.file.FlatFileItemWriter;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
+import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.batch.infrastructure.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.infrastructure.item.file.mapping.FieldSetMapper;
+import org.springframework.batch.infrastructure.item.file.transform.BeanWrapperFieldExtractor;
+import org.springframework.batch.infrastructure.item.file.transform.DelimitedLineAggregator;
 import org.springframework.batch.infrastructure.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.batch.infrastructure.item.file.transform.LineTokenizer;
+import org.springframework.batch.infrastructure.item.json.JacksonJsonObjectMarshaller;
 import org.springframework.batch.infrastructure.item.json.JacksonJsonObjectReader;
+import org.springframework.batch.infrastructure.item.json.JsonFileItemWriter;
 import org.springframework.batch.infrastructure.item.json.JsonItemReader;
+import org.springframework.batch.infrastructure.item.json.builder.JsonFileItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.json.builder.JsonItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.xml.StaxEventItemReader;
 import org.springframework.batch.infrastructure.item.xml.builder.StaxEventItemReaderBuilder;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
@@ -57,6 +68,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 import java.io.File;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.Date;
 
 @Configuration
 
@@ -81,6 +95,9 @@ public class SampleJob {
 
     @Autowired
     private FirstItemProcessor firstItemProcessor;
+
+    @Autowired
+    private StudentProcessor studentProcessor;
 
     @Autowired
     private FirstItemWriter firstItemWriter;
@@ -176,7 +193,7 @@ public class SampleJob {
 
     private Step firstChunkStep() {
         return new StepBuilder("First Chunk Step", jobRepository)
-                .<StudentJdbc, StudentJdbc>chunk(3)
+                .<StudentJdbc, StudentJson>chunk(3)
                 //ItemReader MUST always be provided in Chunk oriented steps
                 //.reader(flatFileItemReader())
                 //.reader(xmlItemReader())
@@ -185,8 +202,10 @@ public class SampleJob {
                 //the processor is necessary when the reader output and the writer input do not match
                 //otherwise it is optional
                 //.processor(firstItemProcessor)
+                .processor(studentProcessor)
                 //ItemWriter MUST always be provided in Chunk oriented steps
-                .writer(jdbcItemWriter)
+                //.writer(flatFileItemWriter())
+                .writer(jsonFileItemWriter())
                 //.writer(firstItemWriter)
                 .build();
     }
@@ -257,4 +276,46 @@ public class SampleJob {
         return itemReaderAdapter;
     }
 
+    @StepScope
+    @Bean
+    public FlatFileItemWriter<StudentJdbc> flatFileItemWriter(
+    ){
+        FlatFileHeaderCallback headerCallback = new FlatFileHeaderCallback() {
+            @Override
+            public void writeHeader(Writer writer) throws IOException {
+                writer.write("Id, First Name, Last Name, Email");
+            }
+        };
+
+        BeanWrapperFieldExtractor<StudentJdbc> fieldExtractor = new BeanWrapperFieldExtractor<>();
+        fieldExtractor.setNames(new String[] {"id", "firstName", "lastName", "email"});
+
+        DelimitedLineAggregator<StudentJdbc> lineAggregator = new DelimitedLineAggregator<>();
+        lineAggregator.setFieldExtractor(fieldExtractor);
+
+        FlatFileFooterCallback footerCallback = writer -> writer.write("Created @ " + new Date());
+
+        return new FlatFileItemWriterBuilder<StudentJdbc>()
+                .name("CsvFlatFileItemWriter")
+                .resource(new FileSystemResource(
+                        "C:\\dev\\spring-batch-practice\\outputFiles\\students.csv"
+                ))
+                .headerCallback(headerCallback)
+                .lineAggregator(lineAggregator)
+                .footerCallback(footerCallback)
+                .build();
+    }
+
+    public JsonFileItemWriter<StudentJson> jsonFileItemWriter(){
+
+        JacksonJsonObjectMarshaller<StudentJson> marshaller = new JacksonJsonObjectMarshaller<>();
+
+        return new JsonFileItemWriterBuilder<StudentJson>()
+                .name("jsonFileItemWriter")
+                .resource(new FileSystemResource(
+                        "C:\\dev\\spring-batch-practice\\outputFiles\\students.json"
+                ))
+                .jsonObjectMarshaller(marshaller)
+                .build();
+    }
 }

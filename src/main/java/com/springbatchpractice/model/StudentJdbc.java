@@ -1,7 +1,9 @@
 package com.springbatchpractice.model;
 
+import jakarta.xml.bind.annotation.XmlRootElement;
 import lombok.Data;
 
+@XmlRootElement(name = "student")
 @Data
 public class StudentJdbc {
 

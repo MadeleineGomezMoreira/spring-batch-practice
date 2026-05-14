@@ -50,7 +50,9 @@ import org.springframework.batch.infrastructure.item.json.JsonItemReader;
 import org.springframework.batch.infrastructure.item.json.builder.JsonFileItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.json.builder.JsonItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.xml.StaxEventItemReader;
+import org.springframework.batch.infrastructure.item.xml.StaxEventItemWriter;
 import org.springframework.batch.infrastructure.item.xml.builder.StaxEventItemReaderBuilder;
+import org.springframework.batch.infrastructure.item.xml.builder.StaxEventItemWriterBuilder;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -193,7 +195,7 @@ public class SampleJob {
 
     private Step firstChunkStep() {
         return new StepBuilder("First Chunk Step", jobRepository)
-                .<StudentJdbc, StudentJson>chunk(3)
+                .<StudentJdbc, StudentJdbc>chunk(3)
                 //ItemReader MUST always be provided in Chunk oriented steps
                 //.reader(flatFileItemReader())
                 //.reader(xmlItemReader())
@@ -202,11 +204,12 @@ public class SampleJob {
                 //the processor is necessary when the reader output and the writer input do not match
                 //otherwise it is optional
                 //.processor(firstItemProcessor)
-                .processor(studentProcessor)
+                //.processor(studentProcessor)
                 //ItemWriter MUST always be provided in Chunk oriented steps
                 //.writer(flatFileItemWriter())
-                .writer(jsonFileItemWriter())
+                //.writer(jsonFileItemWriter())
                 //.writer(firstItemWriter)
+                .writer(staxEventItemWriter())
                 .build();
     }
 
@@ -316,6 +319,21 @@ public class SampleJob {
                         "C:\\dev\\spring-batch-practice\\outputFiles\\students.json"
                 ))
                 .jsonObjectMarshaller(marshaller)
+                .build();
+    }
+
+    public StaxEventItemWriter<StudentJdbc> staxEventItemWriter(){
+
+        Jaxb2Marshaller marshaller = new Jaxb2Marshaller();
+        marshaller.setClassesToBeBound(StudentJdbc.class);
+
+        return new StaxEventItemWriterBuilder<StudentJdbc>()
+                .name("XmlItemWriter")
+                .resource(new FileSystemResource(
+                        "C:\\dev\\spring-batch-practice\\outputFiles\\students.xml"
+                ))
+                .rootTagName("student")
+                .marshaller(marshaller)
                 .build();
     }
 }

@@ -15,7 +15,6 @@ import com.springbatchpractice.writer.FirstItemWriter;
 import com.springbatchpractice.writer.JdbcItemWriter;
 import com.springbatchpractice.writer.JsonItemWriter;
 import com.springbatchpractice.writer.XmlItemWriter;
-import lombok.AllArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.Job;
@@ -28,7 +27,12 @@ import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.item.adapter.ItemReaderAdapter;
+import org.springframework.batch.infrastructure.item.adapter.ItemWriterAdapter;
+import org.springframework.batch.infrastructure.item.database.BeanPropertyItemSqlParameterSourceProvider;
+import org.springframework.batch.infrastructure.item.database.ItemPreparedStatementSetter;
+import org.springframework.batch.infrastructure.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.infrastructure.item.database.JdbcCursorItemReader;
+import org.springframework.batch.infrastructure.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.file.FlatFileFooterCallback;
 import org.springframework.batch.infrastructure.item.file.FlatFileHeaderCallback;
@@ -37,12 +41,8 @@ import org.springframework.batch.infrastructure.item.file.FlatFileItemWriter;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.file.mapping.BeanWrapperFieldSetMapper;
-import org.springframework.batch.infrastructure.item.file.mapping.DefaultLineMapper;
-import org.springframework.batch.infrastructure.item.file.mapping.FieldSetMapper;
 import org.springframework.batch.infrastructure.item.file.transform.BeanWrapperFieldExtractor;
 import org.springframework.batch.infrastructure.item.file.transform.DelimitedLineAggregator;
-import org.springframework.batch.infrastructure.item.file.transform.DelimitedLineTokenizer;
-import org.springframework.batch.infrastructure.item.file.transform.LineTokenizer;
 import org.springframework.batch.infrastructure.item.json.JacksonJsonObjectMarshaller;
 import org.springframework.batch.infrastructure.item.json.JacksonJsonObjectReader;
 import org.springframework.batch.infrastructure.item.json.JsonFileItemWriter;
@@ -56,22 +56,18 @@ import org.springframework.batch.infrastructure.item.xml.builder.StaxEventItemWr
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.oxm.jaxb.Jaxb2Marshaller;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
-import java.io.File;
 import java.io.IOException;
 import java.io.Writer;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Date;
 
 @Configuration
@@ -195,11 +191,11 @@ public class SampleJob {
 
     private Step firstChunkStep() {
         return new StepBuilder("First Chunk Step", jobRepository)
-                .<StudentJdbc, StudentJdbc>chunk(3)
+                .<StudentCsv, StudentCsv>chunk(3)
                 //ItemReader MUST always be provided in Chunk oriented steps
-                //.reader(flatFileItemReader())
+                .reader(flatFileItemReader())
                 //.reader(xmlItemReader())
-                .reader(jdbcItemReader())
+                //.reader(jdbcItemReader())
                 //.reader(itemReaderAdapter())
                 //the processor is necessary when the reader output and the writer input do not match
                 //otherwise it is optional
@@ -209,7 +205,9 @@ public class SampleJob {
                 //.writer(flatFileItemWriter())
                 //.writer(jsonFileItemWriter())
                 //.writer(firstItemWriter)
-                .writer(staxEventItemWriter())
+                //.writer(staxEventItemWriter())
+                //.writer(jdbcBatchItemWriter())
+                .writer(jdbcBatchItemWriterPreparedStatement())
                 .build();
     }
 
@@ -279,6 +277,13 @@ public class SampleJob {
         return itemReaderAdapter;
     }
 
+    public ItemWriterAdapter<StudentCsv> itemWriterAdapter(){
+        ItemWriterAdapter<StudentCsv> itemWriterAdapter = new ItemWriterAdapter<>();
+        itemWriterAdapter.setTargetObject(studentService);
+        itemWriterAdapter.setTargetMethod("restCallToCreateStudent");
+        return itemWriterAdapter;
+    }
+
     @StepScope
     @Bean
     public FlatFileItemWriter<StudentJdbc> flatFileItemWriter(
@@ -335,5 +340,43 @@ public class SampleJob {
                 .rootTagName("student")
                 .marshaller(marshaller)
                 .build();
+    }
+
+    @Bean
+    public JdbcBatchItemWriter<StudentCsv> jdbcBatchItemWriter(){
+        BeanPropertyItemSqlParameterSourceProvider<StudentCsv> beanPropertyItemSqlParameterSourceProvider =
+                new BeanPropertyItemSqlParameterSourceProvider<>();
+
+        return new JdbcBatchItemWriterBuilder<StudentCsv>()
+                .dataSource(uniDatasource)
+                .sql("insert into student(id, first_name, last_name, email) values (:id, :firstName, :lastName, :email)")
+                .itemSqlParameterSourceProvider(beanPropertyItemSqlParameterSourceProvider)
+                .build();
+
+    }
+
+    @Bean
+    public JdbcBatchItemWriter<StudentCsv> jdbcBatchItemWriterPreparedStatement(){
+        BeanPropertyItemSqlParameterSourceProvider<StudentCsv> beanPropertyItemSqlParameterSourceProvider =
+                new BeanPropertyItemSqlParameterSourceProvider<>();
+
+        ItemPreparedStatementSetter<StudentCsv> preparedStatementSetter = new ItemPreparedStatementSetter<StudentCsv>() {
+            @Override
+            public void setValues(StudentCsv item, PreparedStatement ps) throws SQLException {
+                ps.setLong(1, item.getId());
+                ps.setString(2, item.getFirstName());
+                ps.setString(3, item.getLastName());
+                ps.setString(4, item.getEmail());
+
+            }
+        };
+
+        return new JdbcBatchItemWriterBuilder<StudentCsv>()
+                .dataSource(uniDatasource)
+                .sql("insert into student(id, first_name, last_name, email) values (?, ?, ?, ?)")
+                .itemPreparedStatementSetter(preparedStatementSetter)
+                .itemSqlParameterSourceProvider(beanPropertyItemSqlParameterSourceProvider)
+                .build();
+
     }
 }

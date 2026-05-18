@@ -1,5 +1,6 @@
 package com.springbatchpractice.service;
 
+import com.springbatchpractice.model.StudentCsv;
 import com.springbatchpractice.model.StudentJson;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -13,14 +14,12 @@ public class StudentService {
 
     List<StudentJson> list;
 
-    public List<StudentJson> restCallToStudents() {
+    public void restCallToStudents() {
         RestTemplate restTemplate = new RestTemplate();
         StudentJson[] studentsArray =
                 restTemplate.getForObject("http://localhost:8081/api/v1/students", StudentJson[].class);
 
         list = new ArrayList<>(Arrays.asList(studentsArray));
-
-        return list;
     }
 
     public StudentJson getStudent(Long id, String name){
@@ -34,5 +33,11 @@ public class StudentService {
         }
 
         return null;
+    }
+
+    public StudentJson restCallToCreateStudent(StudentCsv studentCsv){
+        RestTemplate restTemplate = new RestTemplate();
+        return restTemplate.postForObject("http://localhost:8081/api/v1/createStudent",
+                studentCsv, StudentJson.class);
     }
 }

@@ -25,6 +25,7 @@ import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.skip.AlwaysSkipItemSkipPolicy;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.item.adapter.ItemReaderAdapter;
 import org.springframework.batch.infrastructure.item.adapter.ItemWriterAdapter;
@@ -34,10 +35,7 @@ import org.springframework.batch.infrastructure.item.database.JdbcBatchItemWrite
 import org.springframework.batch.infrastructure.item.database.JdbcCursorItemReader;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcCursorItemReaderBuilder;
-import org.springframework.batch.infrastructure.item.file.FlatFileFooterCallback;
-import org.springframework.batch.infrastructure.item.file.FlatFileHeaderCallback;
-import org.springframework.batch.infrastructure.item.file.FlatFileItemReader;
-import org.springframework.batch.infrastructure.item.file.FlatFileItemWriter;
+import org.springframework.batch.infrastructure.item.file.*;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.file.mapping.BeanWrapperFieldSetMapper;
@@ -208,6 +206,14 @@ public class SampleJob {
                 //.writer(staxEventItemWriter())
                 //.writer(jdbcBatchItemWriter())
                 .writer(jdbcBatchItemWriterPreparedStatement())
+                //if we have an invalid record, it will skip the exception-throwing item
+                .faultTolerant()
+                //it's like a try catch (we can input all sorts of exceptions)
+                .skip(FlatFileParseException.class)
+                //the limit is 0 by default
+                //.skipLimit(Integer.MAX_VALUE)
+                //this will skip all the bad items
+                .skipPolicy(new AlwaysSkipItemSkipPolicy())
                 .build();
     }
 
